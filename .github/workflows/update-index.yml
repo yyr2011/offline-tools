@@ -1,25 +1,29 @@
-name: Update Index and Deploy
+name: Generate Index and Deploy Pages
 
+# 触发条件
 on:
   push:
     branches:
-      - main
+      - dev-deploy        # 仅在 dev-deploy 分支 push 时触发
     paths:
       - 'tools/**'
-  workflow_dispatch:
+  workflow_dispatch:       # 手动触发也可以
 
 jobs:
   generate-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout
-      - uses: actions/checkout@v3
+      # 1️⃣ Checkout dev-deploy
+      - name: Checkout repository
+        uses: actions/checkout@v3
         with:
-          persist-credentials: true   # 自动使用 GITHUB_TOKEN
+          persist-credentials: true   # 使用 GITHUB_TOKEN
+          ref: dev-deploy
 
       # 2️⃣ Setup Python
-      - uses: actions/setup-python@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
@@ -29,7 +33,7 @@ jobs:
           python scripts/generate_index.py
           ls -l index.html tools/
 
-      # 4️⃣ Commit changes (使用 GITHUB_TOKEN)
+      # 4️⃣ Commit changes to dev-deploy
       - name: Commit changes
         run: |
           git config user.name "github-actions"
@@ -43,4 +47,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./
+          publish_dir: ./          # 部署整个仓库根目录
+          publish_branch: gh-pages # Pages 分支
