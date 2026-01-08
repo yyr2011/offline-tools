@@ -1,13 +1,12 @@
 name: Generate Index and Deploy Pages
 
-# 触发条件
 on:
   push:
     branches:
       - dev-deploy        # 仅在 dev-deploy 分支 push 时触发
     paths:
       - 'tools/**'
-  workflow_dispatch:       # 手动触发也可以
+  workflow_dispatch:       # 手动触发也可
 
 jobs:
   generate-and-deploy:
@@ -18,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          persist-credentials: true   # 使用 GITHUB_TOKEN
+          persist-credentials: true   # 使用默认 GITHUB_TOKEN
           ref: dev-deploy
 
       # 2️⃣ Setup Python
@@ -33,16 +32,7 @@ jobs:
           python scripts/generate_index.py
           ls -l index.html tools/
 
-      # 4️⃣ Commit changes to dev-deploy
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add index.html
-          git commit -m "Update index.html [ci skip]" || echo "No changes"
-          git push
-
-      # 5️⃣ Deploy to GitHub Pages
+      # 4️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
