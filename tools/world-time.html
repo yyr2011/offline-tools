@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>世界主要城市当前时间（离线版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 14px;
+      --shadow: 0 10px 26px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      text-align: center;
+      padding: 22px 16px 10px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .city {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .time {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .date {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .tz {
+      margin-top: auto;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px dashed var(--border);
+      padding-top: 6px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>世界主要城市当前时间</h1>
+  <p>自动更新 · 显示时区 · 完全离线</p>
+</header>
+
+<main id="clockGrid"></main>
+
+<footer>
+  © World Clock · Offline Tool
+</footer>
+
+<script>
+(function () {
+  const cities = [
+    { name: '北京', tz: 'Asia/Shanghai' },
+    { name: '东京', tz: 'Asia/Tokyo' },
+    { name: '新加坡', tz: 'Asia/Singapore' },
+    { name: '孟买', tz: 'Asia/Kolkata' },
+    { name: '伦敦', tz: 'Europe/London' },
+    { name: '巴黎', tz: 'Europe/Paris' },
+    { name: '莫斯科', tz: 'Europe/Moscow' },
+    { name: '纽约', tz: 'America/New_York' },
+    { name: '洛杉矶', tz: 'America/Los_Angeles' },
+    { name: '悉尼', tz: 'Australia/Sydney' }
+  ];
+
+  const grid = document.getElementById('clockGrid');
+
+  function createCard(city) {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    card.innerHTML = `
+      <div class="city">${city.name}</div>
+      <div class="time" data-time></div>
+      <div class="date" data-date></div>
+      <div class="tz">${city.tz}</div>
+    `;
+
+    city._timeEl = card.querySelector('[data-time]');
+    city._dateEl = card.querySelector('[data-date]');
+
+    grid.appendChild(card);
+  }
+
+  function formatTime(date, timeZone) {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).format(date);
+  }
+
+  function formatDate(date, timeZone) {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short'
+    }).format(date);
+  }
+
+  function update() {
+    const now = new Date();
+    cities.forEach(city => {
+      city._timeEl.textContent = formatTime(now, city.tz);
+      city._dateEl.textContent = formatDate(now, city.tz);
+    });
+  }
+
+  cities.forEach(createCard);
+  update();
+  setInterval(update, 1000);
+})();
+</script>
+
+</body>
+</html>

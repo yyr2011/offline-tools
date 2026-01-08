@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>时间戳转换工具（离线版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --radius: 14px;
+      --shadow: 0 10px 26px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 16px 8px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 800px) {
+      main {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input[type="text"], input[type="datetime-local"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.05s ease;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    button.secondary:hover {
+      background: #d1d5db;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .error {
+      font-size: 0.85rem;
+      color: var(--danger);
+    }
+
+    .result {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+      background: #fafafa;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      line-height: 1.6;
+    }
+
+    footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>时间戳转换工具</h1>
+  <p>秒 / 毫秒 · 本地时间 · 完全离线</p>
+</header>
+
+<main>
+  <!-- 当前时间 -->
+  <section class="card">
+    <h2>当前时间</h2>
+
+    <div class="result" id="nowResult"></div>
+
+    <div class="actions">
+      <button id="refreshNow">刷新</button>
+      <button id="copyNow" class="secondary">复制</button>
+    </div>
+  </section>
+
+  <!-- 时间戳 -> 时间 -->
+  <section class="card">
+    <h2>时间戳 → 时间</h2>
+
+    <label>输入时间戳（秒或毫秒）</label>
+    <input id="timestampInput" type="text" placeholder="例如：1700000000 或 1700000000000" />
+
+    <div class="actions">
+      <button id="tsToTime">转换</button>
+    </div>
+
+    <div id="tsError" class="error"></div>
+    <div class="result" id="tsResult"></div>
+  </section>
+
+  <!-- 时间 -> 时间戳 -->
+  <section class="card">
+    <h2>时间 → 时间戳</h2>
+
+    <label>选择本地时间</label>
+    <input id="datetimeInput" type="datetime-local" />
+
+    <div class="actions">
+      <button id="timeToTs">转换</button>
+    </div>
+
+    <div id="timeResult" class="result"></div>
+  </section>
+</main>
+
+<footer>
+  © Timestamp Tool · Offline Ready
+</footer>
+
+<script>
+(function () {
+  const nowResult = document.getElementById('nowResult');
+  const refreshNow = document.getElementById('refreshNow');
+  const copyNow = document.getElementById('copyNow');
+
+  const timestampInput = document.getElementById('timestampInput');
+  const tsResult = document.getElementById('tsResult');
+  const tsError = document.getElementById('tsError');
+
+  const datetimeInput = document.getElementById('datetimeInput');
+  const timeResult = document.getElementById('timeResult');
+
+  function formatDate(date) {
+    return date.getFullYear() + '-' +
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0') + ' ' +
+      String(date.getHours()).padStart(2, '0') + ':' +
+      String(date.getMinutes()).padStart(2, '0') + ':' +
+      String(date.getSeconds()).padStart(2, '0');
+  }
+
+  function updateNow() {
+    const now = new Date();
+    nowResult.textContent =
+      `本地时间: ${formatDate(now)}\n` +
+      `时间戳（秒）: ${Math.floor(now.getTime() / 1000)}\n` +
+      `时间戳（毫秒）: ${now.getTime()}`;
+  }
+
+  refreshNow.onclick = updateNow;
+
+  copyNow.onclick = () => {
+    const range = document.createRange();
+    range.selectNode(nowResult);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    document.execCommand('copy');
+    window.getSelection().removeAllRanges();
+  };
+
+  document.getElementById('tsToTime').onclick = () => {
+    tsError.textContent = '';
+    tsResult.textContent = '';
+
+    const value = timestampInput.value.trim();
+    if (!/^\d+$/.test(value)) {
+      tsError.textContent = '请输入纯数字时间戳';
+      return;
+    }
+
+    let ts = Number(value);
+    if (value.length === 10) ts *= 1000;
+
+    const date = new Date(ts);
+    if (isNaN(date.getTime())) {
+      tsError.textContent = '无效的时间戳';
+      return;
+    }
+
+    tsResult.textContent =
+      `本地时间: ${formatDate(date)}\n` +
+      `时间戳（秒）: ${Math.floor(date.getTime() / 1000)}\n` +
+      `时间戳（毫秒）: ${date.getTime()}`;
+  };
+
+  document.getElementById('timeToTs').onclick = () => {
+    if (!datetimeInput.value) {
+      timeResult.textContent = '';
+      return;
+    }
+
+    const date = new Date(datetimeInput.value);
+    timeResult.textContent =
+      `时间戳（秒）: ${Math.floor(date.getTime() / 1000)}\n` +
+      `时间戳（毫秒）: ${date.getTime()}`;
+  };
+
+  updateNow();
+})();
+</script>
+
+</body>
+</html>
