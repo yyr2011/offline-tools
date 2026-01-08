@@ -2,29 +2,34 @@ name: Update Index and Deploy
 
 on:
   push:
+    branches:
+      - main
     paths:
-      - 'tools/**'   # 只要 tools 文件夹有改动就触发
-  workflow_dispatch:   # 支持手动触发
+      - 'tools/**'
+  workflow_dispatch:
 
 jobs:
   generate-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 获取仓库
+      # 1️⃣ Checkout
       - uses: actions/checkout@v3
+        with:
+          persist-credentials: true   # 自动使用 GITHUB_TOKEN
 
-      # 2️⃣ 安装 Python（默认 Ubuntu 已有，但显式指定）
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      # 2️⃣ Setup Python
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.x'
 
-      # 3️⃣ 运行生成脚本
+      # 3️⃣ Generate index.html
       - name: Generate index.html
-        run: python scripts/generate_index.py
+        run: |
+          python scripts/generate_index.py
+          ls -l index.html tools/
 
-      # 4️⃣ 提交更新
+      # 4️⃣ Commit changes (使用 GITHUB_TOKEN)
       - name: Commit changes
         run: |
           git config user.name "github-actions"
@@ -33,7 +38,7 @@ jobs:
           git commit -m "Update index.html [ci skip]" || echo "No changes"
           git push
 
-      # 5️⃣ 部署到 GitHub Pages
+      # 5️⃣ Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
