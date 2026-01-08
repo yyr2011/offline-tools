@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>进制转换器（离线版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --radius: 14px;
+      --shadow: 0 10px 26px rgba(0,0,0,0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 16px 8px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.95rem;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    input.error {
+      border-color: var(--danger);
+      background: #fef2f2;
+    }
+
+    .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .error-text {
+      font-size: 0.8rem;
+      color: var(--danger);
+    }
+
+    footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>进制转换器</h1>
+  <p>二 / 八 / 十 / 十六进制 · 实时联动 · 离线可用</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>输入任意进制数值</h2>
+
+    <div class="field">
+      <label>二进制（Binary）</label>
+      <input id="bin" type="text" placeholder="例如：101010" />
+      <div class="hint">仅允许 0 和 1</div>
+    </div>
+
+    <div class="field">
+      <label>八进制（Octal）</label>
+      <input id="oct" type="text" placeholder="例如：52" />
+      <div class="hint">仅允许 0–7</div>
+    </div>
+
+    <div class="field">
+      <label>十进制（Decimal）</label>
+      <input id="dec" type="text" placeholder="例如：42" />
+      <div class="hint">仅允许 0–9</div>
+    </div>
+
+    <div class="field">
+      <label>十六进制（Hex）</label>
+      <input id="hex" type="text" placeholder="例如：2A" />
+      <div class="hint">允许 0–9 和 A–F</div>
+    </div>
+
+    <div id="errorMsg" class="error-text"></div>
+  </section>
+</main>
+
+<footer>
+  © Base Converter · Offline Tool
+</footer>
+
+<script>
+(function () {
+  const inputs = {
+    bin: document.getElementById('bin'),
+    oct: document.getElementById('oct'),
+    dec: document.getElementById('dec'),
+    hex: document.getElementById('hex')
+  };
+
+  const errorMsg = document.getElementById('errorMsg');
+  let isUpdating = false;
+
+  const validators = {
+    bin: /^[01]+$/,
+    oct: /^[0-7]+$/,
+    dec: /^[0-9]+$/,
+    hex: /^[0-9a-fA-F]+$/
+  };
+
+  function clearErrors() {
+    errorMsg.textContent = '';
+    Object.values(inputs).forEach(i => i.classList.remove('error'));
+  }
+
+  function updateFrom(source) {
+    if (isUpdating) return;
+    isUpdating = true;
+    clearErrors();
+
+    const value = inputs[source].value.trim();
+    if (!value) {
+      Object.values(inputs).forEach(i => {
+        if (i !== inputs[source]) i.value = '';
+      });
+      isUpdating = false;
+      return;
+    }
+
+    if (!validators[source].test(value)) {
+      inputs[source].classList.add('error');
+      errorMsg.textContent = '输入包含非法字符';
+      isUpdating = false;
+      return;
+    }
+
+    try {
+      const decimal = parseInt(value, {
+        bin: 2,
+        oct: 8,
+        dec: 10,
+        hex: 16
+      }[source]);
+
+      inputs.bin.value = decimal.toString(2);
+      inputs.oct.value = decimal.toString(8);
+      inputs.dec.value = decimal.toString(10);
+      inputs.hex.value = decimal.toString(16).toUpperCase();
+    } catch {
+      errorMsg.textContent = '转换失败';
+    }
+
+    isUpdating = false;
+  }
+
+  Object.keys(inputs).forEach(key => {
+    inputs[key].addEventListener('input', () => updateFrom(key));
+  });
+})();
+</script>
+
+</body>
+</html>

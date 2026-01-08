@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>文本 / 图片 ↔ Base64 转换工具</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card-bg: #ffffff;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 14px;
+      --shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      main {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      margin: 0;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      resize: vertical;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    input[type="file"] {
+      font-size: 0.9rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.05s ease;
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    button.secondary:hover {
+      background: #d1d5db;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .error {
+      color: #dc2626;
+      font-size: 0.85rem;
+    }
+
+    .preview {
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    .preview img {
+      max-width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>文本 / 图片 ↔ Base64 转换</h1>
+  <p>离线可用 · 单文件 · 原生实现</p>
+</header>
+
+<main>
+  <!-- 文本 <-> Base64 -->
+  <section class="card">
+    <h2>文本 ⇄ Base64</h2>
+
+    <textarea id="textInput" placeholder="在此输入普通文本或 Base64 字符串…"></textarea>
+
+    <div class="actions">
+      <button id="textToBase64">文本 → Base64</button>
+      <button id="base64ToText" class="secondary">Base64 → 文本</button>
+      <button id="copyText" class="secondary">复制结果</button>
+    </div>
+
+    <div id="textError" class="error"></div>
+  </section>
+
+  <!-- 图片 <-> Base64 -->
+  <section class="card">
+    <h2>图片 ⇄ Base64</h2>
+
+    <input type="file" id="imageInput" accept="image/*" />
+
+    <textarea id="imageBase64" placeholder="图片 Base64 将显示在这里，或粘贴 Base64 还原图片…"></textarea>
+
+    <div class="actions">
+      <button id="imageToBase64">图片 → Base64</button>
+      <button id="base64ToImage" class="secondary">Base64 → 图片</button>
+      <button id="copyImageBase64" class="secondary">复制 Base64</button>
+    </div>
+
+    <div id="imageError" class="error"></div>
+
+    <div class="preview" id="imagePreview"></div>
+  </section>
+</main>
+
+<footer>
+  © Base64 Tool · Offline Ready
+</footer>
+
+<script>
+(function () {
+  const textInput = document.getElementById('textInput');
+  const imageInput = document.getElementById('imageInput');
+  const imageBase64 = document.getElementById('imageBase64');
+  const imagePreview = document.getElementById('imagePreview');
+
+  const textError = document.getElementById('textError');
+  const imageError = document.getElementById('imageError');
+
+  function clearErrors() {
+    textError.textContent = '';
+    imageError.textContent = '';
+  }
+
+  // 文本 -> Base64
+  document.getElementById('textToBase64').onclick = () => {
+    clearErrors();
+    if (!textInput.value) return;
+    try {
+      textInput.value = btoa(unescape(encodeURIComponent(textInput.value)));
+    } catch {
+      textError.textContent = '文本无法转换为 Base64。';
+    }
+  };
+
+  // Base64 -> 文本
+  document.getElementById('base64ToText').onclick = () => {
+    clearErrors();
+    if (!textInput.value) return;
+    try {
+      textInput.value = decodeURIComponent(escape(atob(textInput.value)));
+    } catch {
+      textError.textContent = '非法 Base64 字符串。';
+    }
+  };
+
+  // 复制文本
+  document.getElementById('copyText').onclick = () => {
+    textInput.select();
+    document.execCommand('copy');
+  };
+
+  // 图片 -> Base64
+  document.getElementById('imageToBase64').onclick = () => {
+    clearErrors();
+    const file = imageInput.files[0];
+    if (!file) {
+      imageError.textContent = '请先选择图片文件。';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      imageBase64.value = reader.result;
+      imagePreview.innerHTML = `<img src="${reader.result}" />`;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Base64 -> 图片
+  document.getElementById('base64ToImage').onclick = () => {
+    clearErrors();
+    const value = imageBase64.value.trim();
+    if (!value.startsWith('data:image')) {
+      imageError.textContent = '请输入有效的图片 Base64（data:image/...）。';
+      return;
+    }
+    imagePreview.innerHTML = `<img src="${value}" />`;
+  };
+
+  // 复制图片 Base64
+  document.getElementById('copyImageBase64').onclick = () => {
+    imageBase64.select();
+    document.execCommand('copy');
+  };
+})();
+</script>
+
+</body>
+</html>

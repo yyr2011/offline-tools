@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>正则表达式测试器（离线版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --radius: 14px;
+      --shadow: 0 10px 26px rgba(0,0,0,0.08);
+      --highlight: #fde68a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      text-align: center;
+      padding: 20px 16px 8px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 900px) {
+      main {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .flags {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .flags label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .error {
+      color: var(--danger);
+      font-size: 0.85rem;
+    }
+
+    .result {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 180px;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      background: #fafafa;
+    }
+
+    mark {
+      background: var(--highlight);
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    footer {
+      text-align: center;
+      padding: 14px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>正则表达式测试器</h1>
+  <p>实时匹配 · 高亮结果 · 完全离线</p>
+</header>
+
+<main>
+  <!-- 正则输入 -->
+  <section class="card">
+    <h2>正则表达式</h2>
+
+    <label>Pattern（不含 / /）</label>
+    <input id="pattern" type="text" placeholder="例如：\\b\\w+\\b" />
+
+    <label>Flags</label>
+    <div class="flags">
+      <label><input type="checkbox" value="g" checked /> g（全局）</label>
+      <label><input type="checkbox" value="i" /> i（忽略大小写）</label>
+      <label><input type="checkbox" value="m" /> m（多行）</label>
+      <label><input type="checkbox" value="s" /> s（dotAll）</label>
+      <label><input type="checkbox" value="u" /> u（Unicode）</label>
+    </div>
+
+    <div id="regexStatus" class="status">请输入正则表达式</div>
+  </section>
+
+  <!-- 测试文本 -->
+  <section class="card">
+    <h2>测试文本</h2>
+
+    <textarea id="testText" placeholder="在这里输入或粘贴需要匹配的文本…"></textarea>
+
+    <div id="matchInfo" class="status">等待匹配</div>
+    <div id="matchError" class="error"></div>
+
+    <div class="result" id="resultView"></div>
+  </section>
+</main>
+
+<footer>
+  © Regex Tester · Offline Tool
+</footer>
+
+<script>
+(function () {
+  const patternInput = document.getElementById('pattern');
+  const testText = document.getElementById('testText');
+  const flagsCheckboxes = document.querySelectorAll('.flags input');
+  const resultView = document.getElementById('resultView');
+  const matchInfo = document.getElementById('matchInfo');
+  const matchError = document.getElementById('matchError');
+  const regexStatus = document.getElementById('regexStatus');
+
+  function getFlags() {
+    return Array.from(flagsCheckboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value)
+      .join('');
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"]/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;'
+    }[c]));
+  }
+
+  function update() {
+    matchError.textContent = '';
+    resultView.innerHTML = '';
+    matchInfo.textContent = '';
+
+    const pattern = patternInput.value;
+    const text = testText.value;
+    const flags = getFlags();
+
+    if (!pattern) {
+      regexStatus.textContent = '请输入正则表达式';
+      return;
+    }
+
+    let regex;
+    try {
+      regex = new RegExp(pattern, flags);
+      regexStatus.textContent = `/${pattern}/${flags}`;
+    } catch (e) {
+      matchError.textContent = '正则表达式语法错误';
+      return;
+    }
+
+    if (!text) {
+      matchInfo.textContent = '请输入测试文本';
+      return;
+    }
+
+    let matches = [];
+    let match;
+    let lastIndex = 0;
+    let output = '';
+    let count = 0;
+
+    if (!flags.includes('g')) {
+      match = regex.exec(text);
+      if (match) {
+        output =
+          escapeHTML(text.slice(0, match.index)) +
+          '<mark>' + escapeHTML(match[0]) + '</mark>' +
+          escapeHTML(text.slice(match.index + match[0].length));
+        count = 1;
+      } else {
+        output = escapeHTML(text);
+      }
+    } else {
+      while ((match = regex.exec(text)) !== null) {
+        output += escapeHTML(text.slice(lastIndex, match.index));
+        output += '<mark>' + escapeHTML(match[0]) + '</mark>';
+        lastIndex = match.index + match[0].length;
+        count++;
+        if (match.index === regex.lastIndex) {
+          regex.lastIndex++;
+        }
+      }
+      output += escapeHTML(text.slice(lastIndex));
+    }
+
+    resultView.innerHTML = output || escapeHTML(text);
+    matchInfo.textContent = `匹配到 ${count} 处结果`;
+  }
+
+  patternInput.addEventListener('input', update);
+  testText.addEventListener('input', update);
+  flagsCheckboxes.forEach(cb => cb.addEventListener('change', update));
+})();
+</script>
+
+</body>
+</html>
